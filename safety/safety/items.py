@@ -30,6 +30,7 @@ class SafetyItem(Item):
     Phase = Field()
     Nature = Field()
     DepartureAirport = Field()
+    DestinationAirport = Field()
     FlightNumber= Field()
     Cycles=Field()
     GroundCasualities=Field()

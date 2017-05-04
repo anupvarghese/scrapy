@@ -20,7 +20,6 @@ class AviationSpider(CrawlSpider):
     for url in urls:
       yield Request(url=url, callback=self.parse)
 
-
   def parse_again(self, response):
     item = response.meta['item']
     hxs = Selector(response)
@@ -50,6 +49,7 @@ class AviationSpider(CrawlSpider):
     columns = hxs.xpath("//td")
     keys = columns[::2]
     vals = columns[1::2]
+    columns = hxs.xpath("//span")
     print '******************START*************'
     item = {}
     for key, val in zip(keys, vals):
@@ -76,7 +76,7 @@ class AviationSpider(CrawlSpider):
         aviationItem['OperatingFor'] = '-'
         aviationItem['CrashSiteElevation'] = '-'
         aviationItem['OperatedBy'] = '-'
-
+        aviationItem['DestinationAirport'] = '-'
         if 'C/n / msn' in niceKey:
           niceKey = 'CarrierNumber'
         if 'Flightnumber' in niceKey:
@@ -111,6 +111,8 @@ class AviationSpider(CrawlSpider):
           niceKey = 'Cycles'
         if 'Operated by' in niceKey:
           niceKey = 'OperatedBy'
+        if 'Destination airport' in niceKey:
+          niceKey = 'DestinationAirport'
         aviationItem[niceKey] = niceVal
     return aviationItem
     print '******************END*************'
