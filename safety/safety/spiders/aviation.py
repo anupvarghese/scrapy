@@ -8,6 +8,8 @@ from safety.items import SafetyItem
 """
 Class to scrap https://aviation-safety.net/database/
 """
+
+
 class AviationSpider(CrawlSpider):
     """Spider"""
     name = "aviation"
@@ -17,6 +19,7 @@ class AviationSpider(CrawlSpider):
     """
     start requests
     """
+
     def start_requests(self):
         """Begin firing requests"""
         urls = [
@@ -27,6 +30,7 @@ class AviationSpider(CrawlSpider):
     """
     method to get url
     """
+
     def find_url(self, filter, title):
         """Gets the url"""
         link = ''
@@ -47,6 +51,7 @@ class AviationSpider(CrawlSpider):
     """
     parse callback
     """
+
     def parse(self, response):
         """First level scraping"""
         hxs = Selector(response)
@@ -66,6 +71,7 @@ class AviationSpider(CrawlSpider):
     """
     parse callback for second page scrapping
     """
+
     def parse_second_page(self, response):
         """Second level scraping"""
         item = response.meta['item']
@@ -84,6 +90,7 @@ class AviationSpider(CrawlSpider):
     """
     parse callback for second page scrapping
     """
+
     def parse_third_page(self, response):
         """Third level scraping"""
         aviation_item = response.meta['item']
@@ -106,14 +113,14 @@ class AviationSpider(CrawlSpider):
             if len(item_key) > 0 and item_key[0][:-1].strip() == 'Date':
                 item_val = val.css('.caption::text').extract()
             if len(item_key) > 0 and item_key[0][:-1].strip() == 'Location':
-                location = str(val.css("a::text").extract()[
-                    0]) + ' / ' + str(val.css('.desc::text').extract()[0][:-1].strip())
+                location = val.css("a::text").extract()[0].encode(
+                    'utf-8') + ' / ' + val.css('.desc::text').extract()[0][:-1].encode('utf-8').strip()
                 item_val = [location]
 
             if len(item_key) > 0 and len(item_val) > 0:
-                nice_key = str(item_key[0])[:-1].strip()
-                nice_val = str(item_val[0]).strip().replace(
-                    ',', '#').replace('=', '#')
+                nice_key = item_key[0].encode('utf-8')[:-1].strip()
+                nice_val = item_val[0].encode('utf-8').strip().replace(',', '#').replace('=', '#') if type(
+                    item_val[0]) == 'unicode' else item_val[0].strip().replace(',', '#').replace('=', '#')
                 aviation_item['FlightNumber'] = '-'
                 aviation_item['Cycles'] = '-'
                 aviation_item['GroundCasualities'] = '-'
@@ -122,6 +129,8 @@ class AviationSpider(CrawlSpider):
                 aviation_item['CrashSiteElevation'] = '-'
                 aviation_item['OperatedBy'] = '-'
                 aviation_item['DestinationAirport'] = '-'
+                aviation_item['OnBehalfOf'] = '-'
+                aviation_item['LeasedFrom'] = '-'
                 if 'C/n / msn' in nice_key:
                     nice_key = 'CarrierNumber'
                 if 'Flightnumber' in nice_key:
@@ -150,7 +159,7 @@ class AviationSpider(CrawlSpider):
                     nice_key = 'CollisionCasualties'
                 if 'Operating for' in nice_key:
                     nice_key = 'OperatingFor'
-                if 'Operating for' in nice_key:
+                if 'Crash site elevation' in nice_key:
                     nice_key = 'CrashSiteElevation'
                 if 'Cycles' in nice_key:
                     nice_key = 'Cycles'
@@ -158,6 +167,10 @@ class AviationSpider(CrawlSpider):
                     nice_key = 'OperatedBy'
                 if 'Destination airport' in nice_key:
                     nice_key = 'DestinationAirport'
+                if 'On behalf of' in nice_key:
+                    nice_key = 'OnBehalfOf'
+                if 'Leased from' in nice_key:
+                    nice_key = 'LeasedFrom'
                 aviation_item[nice_key] = nice_val
         print '******************END*************'
         return aviation_item
