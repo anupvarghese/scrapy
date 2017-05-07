@@ -1,4 +1,5 @@
 import scrapy
+import sys
 from scrapy.spider import Spider
 from scrapy.contrib.spiders import CrawlSpider, Rule
 from scrapy.http import Request
@@ -96,81 +97,150 @@ class AviationSpider(CrawlSpider):
         aviation_item = response.meta['item']
         hxs = Selector(response)
         # for row in rows:
-        columns = hxs.xpath("//td")
-        keys = columns[::2]
-        vals = columns[1::2]
-        columns = hxs.xpath("//span")
-        print '******************START*************'
-        item = {}
-        for key, val in zip(keys, vals):
-            item_key = key.css('.caption::text').extract()
-            item_vals = val.css('.desc')
-            item_text = val.css('.desc::text').extract()
-            item_val = item_text
-            if len(item_text) < 1:
-                for val in item_vals:
-                    item_val = val.css("a::text").extract()
-            if len(item_key) > 0 and item_key[0][:-1].strip() == 'Date':
-                item_val = val.css('.caption::text').extract()
-            if len(item_key) > 0 and item_key[0][:-1].strip() == 'Location':
-                location = val.css("a::text").extract()[0].encode(
-                    'utf-8') + ' / ' + val.css('.desc::text').extract()[0][:-1].encode('utf-8').strip()
-                item_val = [location]
+        rows = hxs.xpath("//tr//td")
+        key_columns = rows[::2]
+        val_columns = rows[1::2]
 
-            if len(item_key) > 0 and len(item_val) > 0:
-                nice_key = item_key[0].encode('utf-8')[:-1].strip()
-                nice_val = item_val[0].encode('utf-8').strip().replace(',', '#').replace('=', '#') if type(
-                    item_val[0]) == 'unicode' else item_val[0].strip().replace(',', '#').replace('=', '#')
-                aviation_item['FlightNumber'] = '-'
-                aviation_item['Cycles'] = '-'
-                aviation_item['GroundCasualities'] = '-'
-                aviation_item['CollisionCasualties'] = '-'
-                aviation_item['OperatingFor'] = '-'
-                aviation_item['CrashSiteElevation'] = '-'
-                aviation_item['OperatedBy'] = '-'
-                aviation_item['DestinationAirport'] = '-'
-                aviation_item['OnBehalfOf'] = '-'
-                aviation_item['LeasedFrom'] = '-'
-                if 'C/n / msn' in nice_key:
-                    nice_key = 'CarrierNumber'
-                if 'Flightnumber' in nice_key:
-                    nice_key = 'FlightNumber'
-                if 'First flight' in nice_key:
-                    nice_key = 'FirstFlight'
-                if 'Total airframe hrs' in nice_key:
-                    nice_key = 'TotalAirFrameHrs'
-                if 'Crew' in nice_key:
-                    nice_key = 'Crew'
-                if 'Passengers' in nice_key:
-                    nice_key = 'Passengers'
-                if 'Total' in nice_key:
-                    nice_key = 'TotalFatalities'
-                if 'Airplane damage' in nice_key:
-                    nice_key = 'AirplaneDamage'
-                if 'Airplane fate' in nice_key:
-                    nice_key = 'AirplaneFate'
-                if 'Location' in nice_key:
-                    nice_key = 'Location'
-                if 'Departure airport' in nice_key:
-                    nice_key = 'DepartureAirport'
-                if 'Ground casualties' in nice_key:
-                    nice_key = 'GroundCasualities'
-                if 'Collision casualties' in nice_key:
-                    nice_key = 'CollisionCasualties'
-                if 'Operating for' in nice_key:
-                    nice_key = 'OperatingFor'
-                if 'Crash site elevation' in nice_key:
-                    nice_key = 'CrashSiteElevation'
-                if 'Cycles' in nice_key:
-                    nice_key = 'Cycles'
-                if 'Operated by' in nice_key:
-                    nice_key = 'OperatedBy'
-                if 'Destination airport' in nice_key:
-                    nice_key = 'DestinationAirport'
-                if 'On behalf of' in nice_key:
-                    nice_key = 'OnBehalfOf'
-                if 'Leased from' in nice_key:
-                    nice_key = 'LeasedFrom'
+        for key, val in aviation_item.iteritems():
+            if val is not None:
+                aviation_item[key] = '-'
+
+        for key, val in zip(key_columns, val_columns):
+            a_texts = val.xpath("a/text()").extract()
+            key_text = key.xpath("./text()").extract()
+            if len(key.xpath("./nobr/text()").extract()):
+                key_text = key.xpath("./nobr/text()").extract()
+            val_text = val.xpath("./text()").extract()
+            narratives = val.xpath("//span/text()").extract()
+            nice_key = ''
+            nice_val = ''
+            narrative = ''
+            # print val_text, key_text, '2'
+            if len(key_text) > 0:
+                nice_key = key_text[0].encode('utf-8')
+            if len(val_text) > 0:
+                nice_val = val_text[0].encode('utf-8')
+                # print nice_val, key_text, '1'
+            if len(a_texts) > 0:
+                for item_text in a_texts:
+                    nice_val += item_text.encode('utf-8')
+            if len(narratives) > 1:
+                narrative = narratives[1]
+
+            nice_key = nice_key.strip()
+            # print nice_val, nice_key, '2'
+            if nice_key == '':
+                continue
+
+            # print nice_val, nice_key, '3'
+
+            if nice_key.lower().find('type') > -1:
+                nice_key = 'Type'
                 aviation_item[nice_key] = nice_val
-        print '******************END*************'
+            elif nice_key.lower().find('registration') > -1:
+                nice_key = 'Registration'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('engines') > -1:
+                nice_key = 'Engines'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('operator') > -1:
+                nice_key = 'Operator'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('date') > -1:
+                nice_key = 'Date'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('phase') > -1:
+                nice_key = 'Phase'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('nature') > -1:
+                nice_key = 'Nature'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('time') > -1:
+                nice_key = 'Time'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('status', 0) > -1:
+                # print 'wTF', nice_val
+                nice_key = 'Status'
+                aviation_item[nice_key] = nice_val
+                # print aviation_item['Status'], 'real fuck'
+            elif nice_key.lower().find('c/n / msn') > -1:
+                nice_key = 'CarrierNumber'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('flightnumber') > -1:
+                nice_key = 'FlightNumber'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('first flight') > -1:
+                nice_key = 'FirstFlight'
+                aviation_item[nice_key] = nice_val
+
+            elif nice_key.lower().find('total airframe hrs') > -1:
+                nice_key = 'TotalAirFrameHrs'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('crew') > -1:
+                nice_key = 'Crew'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('passengers') > -1:
+                nice_key = 'Passengers'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('total') > -1:
+                nice_key = 'TotalFatalities'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('airplane damage') > -1:
+                nice_key = 'AirplaneDamage'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('airplane fate') > -1:
+                nice_key = 'AirplaneFate'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('location') > -1:
+                nice_key = 'Location'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('departure airport') > -1:
+                nice_key = 'DepartureAirport'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('ground casualties') > -1:
+                nice_key = 'GroundCasualities'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('collision casualties') > -1:
+                nice_key = 'CollisionCasualties'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('operating for') > -1:
+                nice_key = 'OperatingFor'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('crash site elevation') > -1:
+                nice_key = 'CrashSiteElevation'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('cycles') > -1:
+                nice_key = 'Cycles'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('operated by') > -1:
+                nice_key = 'OperatedBy'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('destination airport') > -1:
+                nice_key = 'DestinationAirport'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('on behalf of') > -1:
+                nice_key = 'OnBehalfOf'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('leased from') > -1:
+                nice_key = 'LeasedFrom'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('investigating') > -1:
+                nice_key = 'InvestigatingAgency'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('released') > -1:
+                nice_key = 'Released'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('duration of investigation') > -1:
+                nice_key = 'DurationOfInvestigation'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('download report') > -1:
+                nice_key = 'DownloadReport'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('duration') > -1:
+                nice_key = 'Duration'
+                aviation_item[nice_key] = nice_val
+            elif nice_key.lower().find('issued') > -1:
+                nice_key = 'Issued'
+                aviation_item[nice_key] = nice_val
+            aviation_item['Narrative'] = narrative
         return aviation_item

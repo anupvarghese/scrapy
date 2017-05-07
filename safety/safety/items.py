@@ -40,3 +40,13 @@ class SafetyItem(Item):
     OperatedBy = Field()
     OnBehalfOf = Field()
     LeasedFrom = Field()
+    Status = Field()
+    Narrative = Field()
+    InvestigatingAgency = Field()
+    Number = Field()
+    Released = Field()
+    DurationOfInvestigation = Field()
+    DownloadReport = Field()
+    Duration = Field()
+    Issued = Field()
+
