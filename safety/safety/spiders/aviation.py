@@ -22,12 +22,15 @@ class AviationSpider(CrawlSpider):
     """
 
     def start_requests(self):
-        """Begin firing requests"""
-        urls = [
-            'https://aviation-safety.net/database',
-        ]
-        for url in urls:
-            yield Request(url=url, callback=self.parse)
+			"""Begin requests"""
+			gen_names = [(
+                            'https://aviation-safety.net/database/dblist.php?Year=' +
+                            str(year) +
+                            '&lang=&page=' +
+                            str(page)) for year in range(1919, 2017) for page in range(1, 4)]
+			for url in gen_names:
+				yield Request(url=url, callback=self.parse_second_page)
+
     """
     method to get url
     """
@@ -50,32 +53,13 @@ class AviationSpider(CrawlSpider):
             return link
 
     """
-    parse callback
-    """
-
-    def parse(self, response):
-        """First level scraping"""
-        hxs = Selector(response)
-        titles = hxs.xpath("//a")
-        filter = 'dblist.php'
-        item = SafetyItem()
-
-        for title in titles:
-            link = self.find_url(filter=filter, title=title)
-            if link:
-                url = 'https://aviation-safety.net/database/' + link
-                request = Request(
-                    url=url, callback=self.parse_second_page, dont_filter=True)
-                request.meta['item'] = item
-                yield request
-
-    """
     parse callback for second page scrapping
     """
 
     def parse_second_page(self, response):
         """Second level scraping"""
-        item = response.meta['item']
+        item = SafetyItem()
+        #item = response.meta['item']
         hxs = Selector(response)
         titles = hxs.xpath("//a")
         filter = 'record.php'
